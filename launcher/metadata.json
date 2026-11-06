@@ -1,0 +1,15 @@
+{
+  "KPlugin": {
+    "Id": "io.github.darasamii.launcher",
+    "Name": "Dara Launcher",
+    "Description": "Full-screen application launcher with dimmed wallpaper, scrollable favorites, categories, search and deep customization",
+    "Icon": "start-here-kde",
+    "Category": "System Information",
+    "Authors": [{ "Name": "Dara Samii" }],
+    "License": "MIT",
+    "Version": "1.0.0",
+    "Website": "https://github.com/DaraSamii/DaraLauncher"
+  },
+  "KPackageStructure": "Plasma/Applet",
+  "X-Plasma-API-Minimum-Version": "6.0"
+}
