@@ -33,10 +33,10 @@ if md["KPlugin"].get("Category") != "Application Launchers" or "org.kde.plasma.l
 else:
     print("PASS declared as an application launcher (Meta key target)")
 mq = open(src + "/contents/ui/main.qml").read()
-ok_ui = re.search(r"^\s*compactRepresentation:\s*CompactRepresentation", mq, re.M) and re.search(r"^\s*fullRepresentation:\s*Item\s*\{", mq, re.M) \
-    and "onExpandedChanged" not in mq   # cancelling the popup from QML makes Plasma repeat the activation
+ok_ui = re.search(r"^\s*preferredRepresentation:\s*fullRepresentation", mq, re.M) and re.search(r"^\s*compactRepresentation:\s*null", mq, re.M) \
+    and re.search(r"^\s*fullRepresentation:\s*CompactRepresentation", mq, re.M) and "onExpandedChanged" not in mq
 if not ok_ui:
-    print("FAIL main.qml: need the visible compact button and an EMPTY full representation (no big-icon popup), and no onExpandedChanged hack"); bad = True
+    print("FAIL main.qml: the button must be the FULL representation with no compact one (so no popup can open), and no onExpandedChanged hack"); bad = True
 else:
-    print("PASS panel button drawn, empty full view, no popup hack")
+    print("PASS button is the full representation, no compact view, so no popup can open")
 sys.exit(1 if bad else 0)

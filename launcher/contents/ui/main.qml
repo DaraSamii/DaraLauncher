@@ -11,14 +11,11 @@ PlasmoidItem {
     property string wallUrl: ""
     readonly property bool open: win.visible
 
-    // Plasma only draws the panel button when a full representation exists, and it opens that view (as a popup) whenever the
-    // widget is activated, e.g. by the Meta key. So the full view is an empty item: that popup is invisible and the "big icon"
-    // is gone. (Do not cancel the popup from QML: that made Plasma repeat the activation.) Only a floating desktop instance
-    // shows the button in its full view.
-    compactRepresentation: CompactRepresentation { launcher: root }
-    fullRepresentation: Item {
-        Loader { anchors.fill: parent; active: Plasmoid.formFactor === 0; sourceComponent: Component { CompactRepresentation { launcher: root } } }
-    }
+    // The button IS the full representation and there is no compact one, like Pager or Show Desktop: Plasma draws it
+    // straight into the panel, so there is no popup to open (an empty popup still showed as a box over the button).
+    preferredRepresentation: fullRepresentation
+    compactRepresentation: null
+    fullRepresentation: CompactRepresentation { launcher: root }
     Plasmoid.icon: cfg.icon
     toolTipMainText: i18n("Applications")
     toolTipSubText: i18n("Open the application launcher")
