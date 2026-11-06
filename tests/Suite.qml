@@ -50,7 +50,7 @@ Item {
     function show() { if (!win.visible) { win.toggle(); tc.wait(250); } }
     function reset() {
         for (const k of ["viewMode", "panelWidth", "favColumns", "appColumns", "iconPreset", "textPreset", "tileSpacing", "dim", "blur", "cardOpacity", "tileRadius", "powerSize",
-                         "startCategory", "clearSearch", "closeOnLaunch", "closeOnClickOutside", "keepTaskbar", "showFavorites", "showLetterRail", "showCategories", "showRecent", "showFrequent", "showPower", "animations"])
+                         "startCategory", "searchDocuments", "clearSearch", "closeOnLaunch", "closeOnClickOutside", "keepTaskbar", "showFavorites", "showLetterRail", "showCategories", "showRecent", "showFrequent", "showPower", "animations"])
             cfg[k] = cfg[k + "Default"];
         show();
         win.settingsOpen = false; win.catIndex = 0; win.searchField.clear(); win.lastLaunch = null; root.lastPower = "";
@@ -303,6 +303,21 @@ Item {
             ok("calculator result is merged in", win.found.some(r => r.h === undefined && String(r.name).indexOf("49") >= 0), win.found.map(r => r.h || r.name).slice(0, 5).join(" | "));
             win.searchField.text = "";
         }],
+        ["search scope: apps only, or documents / settings / calculator too", () => {
+            cfg.searchDocuments = false; tc.wait(100);
+            ok("placeholder says apps only", win.searchField.placeholderText.indexOf("files") < 0, win.searchField.placeholderText);
+            typeText("128/4+17"); tc.wait(700);
+            ok("apps only: KRunner is never queried", win.launcher.runnerModel.query === "", "query='" + win.launcher.runnerModel.query + "'");
+            ok("apps only: no calculator or document rows", win.found.every(r => r.h === undefined ? true : r.h === "Applications"), win.found.map(r => r.h || r.name).slice(0, 4).join(" | "));
+            win.searchField.text = ""; win.ensureIndex();
+            win.searchField.text = "konso"; ok("apps only: instant app matches still work", win.found.some(r => r.name === "Konsole") || !win.searchIndex.some(i => i.name === "Konsole"));
+            win.searchField.text = ""; tc.wait(100);
+            cfg.searchDocuments = true; tc.wait(100);
+            ok("placeholder mentions files again", win.searchField.placeholderText.indexOf("files") >= 0);
+            typeText("128/4+17"); tc.wait(900);
+            ok("everything: calculator answer is merged in", win.found.some(r => r.h === undefined && String(r.name).indexOf("49") >= 0), win.found.map(r => r.h || r.name).slice(0, 4).join(" | "));
+            win.searchField.text = "";
+        }],
         ["search: keyboard navigation (Down, arrows, Enter)", () => {
             cfg.viewMode = 1; tc.wait(250);
             win.searchField.forceActiveFocus(); key(Qt.Key_Down);
@@ -456,7 +471,7 @@ Item {
             pop.destroy(); win.visibility = Window.FullScreen; tc.wait(300);
         }],
         ["config: every setting the UI reads exists in the schema", () => {
-            const keys = ["viewMode","panelWidth","favColumns","appColumns","iconPreset","textPreset","tileSpacing","dim","blur","cardOpacity","tileRadius","powerSize","startCategory","lastCategory","clearSearch","closeOnLaunch","closeOnClickOutside","keepTaskbar","showFavorites","showLetterRail","showCategories","showRecent","showFrequent","showPower","animations","accentMode","accentColor","fontFamily","icon","wallpaperMode","wallpaperPath","favoritesSeeded"];
+            const keys = ["viewMode","panelWidth","favColumns","appColumns","iconPreset","textPreset","tileSpacing","dim","blur","cardOpacity","tileRadius","powerSize","startCategory","searchDocuments","lastCategory","clearSearch","closeOnLaunch","closeOnClickOutside","keepTaskbar","showFavorites","showLetterRail","showCategories","showRecent","showFrequent","showPower","animations","accentMode","accentColor","fontFamily","icon","wallpaperMode","wallpaperPath","favoritesSeeded"];
             for (const k of keys) if (cfg[k] === undefined || cfg[k + "Default"] === undefined) ok("config key '" + k + "'", false, "missing");
             ok("all " + keys.length + " config keys present with defaults", keys.every(k => cfg[k] !== undefined && cfg[k + "Default"] !== undefined));
         }],

@@ -11,13 +11,13 @@ PlasmoidItem {
     property string wallUrl: ""
     readonly property bool open: win.visible
 
-    // same button in the panel (compact) and on the desktop (full), so it is never blank
+    // Plasma only draws the panel button when a full representation exists, and it opens that view (as a popup) whenever the
+    // widget is activated, e.g. by the Meta key. So the full view is an empty item (no "big icon" to flash) and the popup is
+    // closed again at once (onExpandedChanged below). Only a floating desktop instance shows the button in its full view.
     compactRepresentation: CompactRepresentation { launcher: root }
-    // In a panel there must be NO full representation: the activation shortcut (Meta) would first pop up a big icon.
-    // Only a floating desktop instance (form factor 0) needs one, to show the button instead of a blank square.
-    fullRepresentation: Plasmoid.formFactor === 0 ? desktopButton : null
-    Component { id: desktopButton; CompactRepresentation { launcher: root } }
-    activationTogglesExpanded: false
+    fullRepresentation: Item {
+        Loader { anchors.fill: parent; active: Plasmoid.formFactor === 0; sourceComponent: Component { CompactRepresentation { launcher: root } } }
+    }
     Plasmoid.icon: cfg.icon
     toolTipMainText: i18n("Applications")
     toolTipSubText: i18n("Open the application launcher")
@@ -95,11 +95,11 @@ PlasmoidItem {
 
     Connections {
         target: Plasmoid
-        function onActivated() { root.toggle(); }
+        function onActivated() { root.trigger(); }
     }
     // Free area of the panel's screen: the screen minus the panel (null when the panel cannot be located).
     function freeRect() {
-        const pw = compactRepresentationItem ? compactRepresentationItem.Window.window : null;
+        const pw = (compactRepresentationItem || root).Window.window;   // the panel window this widget sits in
         if (!pw) return null;
         const cx = pw.x + pw.width / 2, cy = pw.y + pw.height / 2;
         for (const sc of Qt.application.screens) {
@@ -114,6 +114,14 @@ PlasmoidItem {
         }
         return null;
     }
+    // Plasma sets expanded on activation (ignoring activationTogglesExpanded); undo it one turn later (a same-turn write is ignored)
+    onExpandedChanged: if (expanded) Qt.callLater(() => { root.expanded = false; })
+    property double lastTrigger: 0
+    function trigger() {   // Plasma can deliver one Meta press as two activations: act once
+        if (Date.now() - lastTrigger < 800) return;   // Plasma may repeat an activation up to ~0.5 s later
+        lastTrigger = Date.now();
+        toggle();
+    }
     function toggle() {
         if (win.visible) { win.visible = false; return; }
         const r = cfg.keepTaskbar ? freeRect() : null;
@@ -123,8 +131,9 @@ PlasmoidItem {
             win.visibility = Window.Windowed;
             win.requestActivate();
         } else {
-            win.toggle();
-            if (win.visibility !== Window.FullScreen) win.visibility = Window.FullScreen; // coming back from "keep taskbar" mode
+            // not win.toggle(): that marks this widget "expanded", and Plasma then flashes an empty popup (the "big icon")
+            win.visibility = Window.FullScreen;
+            win.requestActivate();
         }
     }
 

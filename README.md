@@ -7,7 +7,7 @@ dimmed wallpaper · scrollable favorites · A–Z sections · categories on the 
 
 [![Plasma 6](https://img.shields.io/badge/KDE%20Plasma-6.x-1d99f3?logo=kde&logoColor=white)](https://kde.org/plasma-desktop/)
 [![Qt 6 / QML](https://img.shields.io/badge/Qt%206-QML-41cd52?logo=qt&logoColor=white)](https://doc.qt.io/qt-6/qtqml-index.html)
-[![Tests](https://img.shields.io/badge/UI%20tests-325%20checks%20passing-2ea44f)](#testing)
+[![Tests](https://img.shields.io/badge/tests-end--to--end%20UI%20suite-2ea44f)](#testing)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 <img src="docs/demo.gif" alt="Demo: scrolling, categories, calculator search, grid and list views, live settings" width="900">
@@ -43,7 +43,7 @@ favorites as you like** in a scrollable column, **every app grouped under big le
 **Layout**
 - **Favorites on the left**, in as many columns as you want (3 by default), **scrollable with no slot limit**. Right-click to add, remove or move.
 - **Opens instantly**: no fade, no popup, no icon flash: a keypress on Meta shows the finished launcher.
-- **Instant search on top**: type anywhere to start. Apps are matched in memory on every keystroke (about 40 µs for 114 apps), so the list updates in the same frame as the key press. It understands prefixes, later words, **initials** (`vsc` → Visual Studio Code), **fuzzy letters** (`dlp` → Dolphin) and several words (`sys sett`). KRunner results (settings pages, files, bookmarks, the calculator: `128/4+17` → `49`, unit conversion) are merged in below as they arrive, and never delay the apps.
+- **Instant search on top**: type anywhere to start. Apps are matched in memory on every keystroke (about 40 µs for 114 apps), so the list updates in the same frame as the key press. It understands prefixes, later words, **initials** (`vsc` → Visual Studio Code), **fuzzy letters** (`dlp` → Dolphin) and several words (`sys sett`). KRunner results (settings pages, files, bookmarks, the calculator: `128/4+17` → `49`, unit conversion) are merged in below as they arrive, and never delay the apps. Prefer apps only? Turn off **Also search documents…** in the settings and KRunner is never queried.
 - **Categories on the right**, in a column exactly as wide as its longest name. *All Applications*, *Recent* and *Most used* are kept apart from the real categories by a divider.
 - **Three ways to browse** all apps: **A–Z sections** with big letter headings and a clickable A–Z rail (default), a **grid**, or a **one-column list** with descriptions.
 - **App names are always shown in full.** Long names wrap (even inside a long word) and each row grows to fit its longest name; nothing is ever cut with “…”. Category names and power-button labels are never clipped either.
@@ -118,7 +118,7 @@ Open the **gear** at the bottom left: a drawer slides in from the right while th
 | **Sizes** | Icon size and text size: Tiny · Small · Normal · Big · Huge |
 | **Favorites** | Icons per row (1–6) |
 | **All apps** | Fit icons per row automatically, or fix the number (1–14) |
-| **Behavior** | What to show on open (All apps / Recent / Most used / Last used) · clear search on open · close after launching · close when clicking far away · keep the taskbar visible · show favorites · show category list · show A–Z rail · show power buttons |
+| **Behavior** | What to show on open (All apps / Recent / Most used / Last used) · **search scope: apps only, or documents, files, settings and the calculator too** · clear search on open · close after launching · close when clicking far away · keep the taskbar visible · show favorites · show category list · show A–Z rail · show power buttons |
 | **Look** | Wallpaper dim and blur · card tint · corner radius · power button size |
 | **Configure dialog only** | Panel icon · wallpaper source (current / custom image / none) · font family · accent color · animations · tile spacing · launcher width · show *Recent* / *Most used* categories |
 
@@ -152,7 +152,7 @@ A launcher is the front door of the desktop, so it ships with an **end-to-end te
 ./tests/run.sh "scrolling"   # only tests whose name contains the text ("a|b" for several)
 ```
 
-It copies the package to a **sandbox plugin id** (your real widget and settings are untouched), replaces app launching and power actions with recorders (nothing is ever started, nothing is ever shut down), and runs the launcher in `plasmawindowed`. **325 checks** across **33 scenarios** currently pass, covering:
+It copies the package to a **sandbox plugin id** (your real widget and settings are untouched), replaces app launching and power actions with recorders (nothing is ever started, nothing is ever shut down), and runs the launcher in `plasmawindowed`. a few hundred checks across about 35 scenarios, covering:
 
 - every button, view mode and category, with the effect verified, not just "the click happened";
 - the settings drawer: all presets, every slider, every checkbox, the start-category chips, *Reset sizes*, and that each option really shows or hides its part of the UI;
@@ -189,6 +189,8 @@ install.sh  uninstall.sh
 No network access, no telemetry. The launcher reads only your Plasma configuration file to find the wallpaper path, and uses the same local data (favorites, usage statistics, KRunner) as Plasma's stock launcher.
 
 ## Known limits
+
+- **Meta key:** Plasma sometimes delivers one press as two activations a few hundred milliseconds apart, so the launcher ignores a second activation within 0.8 s of the first. Opening and closing it with two deliberate presses is unaffected.
 
 - **Plasma only, and tied to its private API.** It builds on `org.kde.plasma.private.kicker`, which KDE may change between releases.
 - Developed and tested on **Plasma 6.7 / Wayland**. X11 and other Plasma 6 versions are untested.

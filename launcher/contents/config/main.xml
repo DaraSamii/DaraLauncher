@@ -34,6 +34,7 @@
     <entry name="showRecent" type="Bool"><default>true</default></entry>
     <entry name="showFrequent" type="Bool"><default>true</default></entry>
     <entry name="showPower" type="Bool"><default>true</default></entry>
+    <entry name="searchDocuments" type="Bool"><default>true</default></entry>
     <entry name="startCategory" type="Int"><default>0</default></entry>
     <entry name="lastCategory" type="Int"><default>0</default></entry>
     <entry name="clearSearch" type="Bool"><default>true</default></entry>

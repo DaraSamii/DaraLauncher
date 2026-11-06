@@ -33,8 +33,10 @@ if md["KPlugin"].get("Category") != "Application Launchers" or "org.kde.plasma.l
 else:
     print("PASS declared as an application launcher (Meta key target)")
 mq = open(src + "/contents/ui/main.qml").read()
-if not re.search(r"fullRepresentation:\s*Plasmoid\.formFactor\s*===\s*0\s*\?\s*\w+\s*:\s*null", mq):
-    print("FAIL main.qml: a panel instance must have no full representation (it would pop up a big icon before the launcher)"); bad = True
+ok_ui = re.search(r"^\s*compactRepresentation:\s*CompactRepresentation", mq, re.M) and re.search(r"^\s*fullRepresentation:\s*Item\s*\{", mq, re.M) \
+    and "onExpandedChanged" in mq and "root.expanded = false" in mq
+if not ok_ui:
+    print("FAIL main.qml: need the visible compact button, an EMPTY full representation (no big-icon popup) and the popup cancelled on expand"); bad = True
 else:
-    print("PASS no popup (full representation) in a panel")
+    print("PASS panel button drawn, empty full view, popup cancelled on activation")
 sys.exit(1 if bad else 0)

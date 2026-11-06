@@ -21,7 +21,7 @@ Kicker.DashboardWindow {
     // (clock, volume, tray...) are not tasks, so they leave it open.
     property bool watching: false
     property int taskBase: 0
-    onVisibilityChanged: { if (visible && visibility === Window.Windowed) armWatch.restart(); else { armWatch.stop(); watching = false; } }
+    onVisibilityChanged: function(visibility) { if (visible && visibility === Window.Windowed) armWatch.restart(); else { armWatch.stop(); watching = false; } }
     readonly property int settingsW: 400
 
     backgroundColor: "black"
@@ -236,7 +236,7 @@ Kicker.DashboardWindow {
     property var runnerRows: []
     function refreshRunnerRows() {
         const m = resultModel, rows = [];
-        if (m && search.text.trim().length >= 2) for (let i = 0; i < m.count; ++i) {
+        if (m && cfg.searchDocuments && search.text.trim().length >= 2) for (let i = 0; i < m.count; ++i) {
             const ix = m.index(i, 0);
             rows.push({ src: m, idx: i, name: m.data(ix, 0) || "", icon: m.data(ix, 1), desc: m.data(ix, 257) || "", group: m.data(ix, 258) || "" });
         }
@@ -355,7 +355,7 @@ Kicker.DashboardWindow {
         height: win.height
 
         Connections { target: win.launcher.rootModel; function onRefreshed() { rebuildTimer.restart(); } function onCountChanged() { rebuildTimer.restart(); } }
-        Connections { target: win.cfg; function onShowRecentChanged() { rebuildTimer.restart(); } function onShowFrequentChanged() { rebuildTimer.restart(); } }
+        Connections { target: win.cfg; function onSearchDocumentsChanged() { if (!win.cfg.searchDocuments) win.launcher.runnerModel.query = ""; win.refreshRunnerRows(); } function onShowRecentChanged() { rebuildTimer.restart(); } function onShowFrequentChanged() { rebuildTimer.restart(); } }
         Connections { target: win.activeModel; function onCountChanged() { groupTimer.restart(); } function onModelReset() { groupTimer.restart(); } function onLayoutChanged() { groupTimer.restart(); } }
         FontMetrics { id: catFm; font: win.f(1.1) }
         FontMetrics { id: pwFm; font: win.f(0.95) }
@@ -389,7 +389,7 @@ Kicker.DashboardWindow {
             function onDataChanged() { Qt.callLater(win.refreshRunnerRows); }
         }
         // load KRunner's plugins once, in the background, so the first real search is not the slow one
-        Timer { interval: 3500; running: true; onTriggered: if (!win.visible) { win.launcher.runnerModel.query = "ab"; warmOff.start(); } }
+        Timer { interval: 3500; running: true; onTriggered: if (win.cfg.searchDocuments && !win.visible) { win.launcher.runnerModel.query = "ab"; warmOff.start(); } }
         Timer { id: warmOff; interval: 1500; onTriggered: if (!win.searching) win.launcher.runnerModel.query = "" }
         QQC2.ToolTip { id: tip }
         ListModel { id: foundModel }
@@ -520,7 +520,7 @@ Kicker.DashboardWindow {
                             id: search
                             Layout.fillWidth: true
                             Layout.preferredHeight: 54
-                            placeholderText: i18n("Search apps, files, settings, calculator…")
+                            placeholderText: win.cfg.searchDocuments ? i18n("Search apps, files, settings, calculator…") : i18n("Search apps…")
                             placeholderTextColor: Qt.rgba(1, 1, 1, 0.5)
                             color: win.text
                             font: win.f(1.2)
@@ -529,7 +529,7 @@ Kicker.DashboardWindow {
                             selectByMouse: true
                             onTextChanged: {
                                 win.updateSearch();   // instant: apps are matched right now, in this keystroke
-                                if (text.trim().length >= 2) queryTimer.restart(); else { queryTimer.stop(); win.launcher.runnerModel.query = ""; }
+                                if (win.cfg.searchDocuments && text.trim().length >= 2) queryTimer.restart(); else { queryTimer.stop(); win.launcher.runnerModel.query = ""; }
                             }
                             Keys.onDownPressed: {
                                 if (win.searching) { results.forceActiveFocus(); results.currentIndex = Math.max(0, win.found.findIndex(r => r.h === undefined)); }
@@ -934,6 +934,7 @@ Kicker.DashboardWindow {
 
                         Heading { text: i18n("Behavior") }
                         Presets { label: i18n("When it opens, show"); names: [i18n("All apps"), i18n("Recent"), i18n("Most used"), i18n("Last used")]; current: win.cfg.startCategory; onPicked: i => win.cfg.startCategory = i }
+                        Check { text: i18n("Search documents, files, settings and the calculator too (off = apps only)"); checked: win.cfg.searchDocuments; onToggled: win.cfg.searchDocuments = checked }
                         Check { text: i18n("Clear the search box when it opens"); checked: win.cfg.clearSearch; onToggled: win.cfg.clearSearch = checked }
                         Check { text: i18n("Keep the taskbar visible while open (applies next time you open it)"); checked: win.cfg.keepTaskbar; onToggled: win.cfg.keepTaskbar = checked }
                         Check { text: i18n("Close after launching an app"); checked: win.cfg.closeOnLaunch; onToggled: win.cfg.closeOnLaunch = checked }
