@@ -190,7 +190,6 @@ No network access, no telemetry. The launcher reads only your Plasma configurati
 
 ## Known limits
 
-- **Meta key:** Plasma sometimes delivers one press as two activations a few hundred milliseconds apart, so the launcher ignores a second activation within 0.8 s of the first. Opening and closing it with two deliberate presses is unaffected.
 
 - **Plasma only, and tied to its private API.** It builds on `org.kde.plasma.private.kicker`, which KDE may change between releases.
 - Developed and tested on **Plasma 6.7 / Wayland**. X11 and other Plasma 6 versions are untested.

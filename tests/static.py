@@ -34,9 +34,9 @@ else:
     print("PASS declared as an application launcher (Meta key target)")
 mq = open(src + "/contents/ui/main.qml").read()
 ok_ui = re.search(r"^\s*compactRepresentation:\s*CompactRepresentation", mq, re.M) and re.search(r"^\s*fullRepresentation:\s*Item\s*\{", mq, re.M) \
-    and "onExpandedChanged" in mq and "root.expanded = false" in mq
+    and "onExpandedChanged" not in mq   # cancelling the popup from QML makes Plasma repeat the activation
 if not ok_ui:
-    print("FAIL main.qml: need the visible compact button, an EMPTY full representation (no big-icon popup) and the popup cancelled on expand"); bad = True
+    print("FAIL main.qml: need the visible compact button and an EMPTY full representation (no big-icon popup), and no onExpandedChanged hack"); bad = True
 else:
-    print("PASS panel button drawn, empty full view, popup cancelled on activation")
+    print("PASS panel button drawn, empty full view, no popup hack")
 sys.exit(1 if bad else 0)
