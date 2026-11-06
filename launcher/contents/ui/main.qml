@@ -13,7 +13,10 @@ PlasmoidItem {
 
     // same button in the panel (compact) and on the desktop (full), so it is never blank
     compactRepresentation: CompactRepresentation { launcher: root }
-    fullRepresentation: CompactRepresentation { launcher: root }
+    // In a panel there must be NO full representation: the activation shortcut (Meta) would first pop up a big icon.
+    // Only a floating desktop instance (form factor 0) needs one, to show the button instead of a blank square.
+    fullRepresentation: Plasmoid.formFactor === 0 ? desktopButton : null
+    Component { id: desktopButton; CompactRepresentation { launcher: root } }
     activationTogglesExpanded: false
     Plasmoid.icon: cfg.icon
     toolTipMainText: i18n("Applications")

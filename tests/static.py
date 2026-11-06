@@ -26,4 +26,15 @@ for page in glob.glob(src + "/contents/ui/config*.qml"):
     if miss or nokey:
         print("FAIL", page.split("/")[-1], "undeclared:", miss, "not in schema:", nokey); bad = True
 print("PASS config pages consistent with the schema" if not bad else "")
+import json
+md = json.load(open(src + "/metadata.json"))
+if md["KPlugin"].get("Category") != "Application Launchers" or "org.kde.plasma.launchermenu" not in md.get("X-Plasma-Provides", []):
+    print("FAIL metadata must declare Category 'Application Launchers' and X-Plasma-Provides org.kde.plasma.launchermenu (that is what the Meta key targets)"); bad = True
+else:
+    print("PASS declared as an application launcher (Meta key target)")
+mq = open(src + "/contents/ui/main.qml").read()
+if not re.search(r"fullRepresentation:\s*Plasmoid\.formFactor\s*===\s*0\s*\?\s*\w+\s*:\s*null", mq):
+    print("FAIL main.qml: a panel instance must have no full representation (it would pop up a big icon before the launcher)"); bad = True
+else:
+    print("PASS no popup (full representation) in a panel")
 sys.exit(1 if bad else 0)

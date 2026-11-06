@@ -102,6 +102,7 @@ Kicker.DashboardWindow {
         l.splice(1, 0, ...extra);
         if (l.length > 1 + extra.length) l[1 + extra.length].sepBefore = true; // divider between All/Recent/Most used and the real categories
         cats = l;
+        indexCount = -1;
         if (catIndex >= l.length) catIndex = 0;
     }
     // which category to show when the launcher opens (0 all, 1 recent, 2 most used, 3 last used)
@@ -175,6 +176,73 @@ Kicker.DashboardWindow {
     function tapAt(x, y) {
         if (cfg.closeOnClickOutside && visible && !nearControl(x, y)) visible = false;
     }
+    // --- instant search ---------------------------------------------------------------
+    // Apps are matched in memory, synchronously, on every keystroke (microseconds): the list updates in the same frame
+    // the key is pressed. KRunner (calculator, settings, files, ...) is merged in below as its results arrive.
+    property var found: []            // rows of the results list: {h: "Heading"} or {src, idx, name, icon, desc}
+    property var searchIndex: []
+    property int indexCount: -1
+    function ensureIndex() {
+        const all = cats.length ? cats[0].model : null;
+        if (!all) { searchIndex = []; indexCount = -1; return; }
+        if (all.count === indexCount) return;
+        indexCount = all.count;
+        searchIndex = itemsOf(all).map(it => { it.nl = it.name.toLowerCase(); it.dl = it.desc.toLowerCase(); it.ini = it.nl.split(/[\s\-_.]+/).map(w => w.charAt(0)).join(""); return it; });
+    }
+    function tokenScore(it, q) {      // lower is better, -1 = no match
+        const n = it.nl;
+        if (n === q) return 0;
+        if (n.startsWith(q)) return 1;
+        const i = n.indexOf(q);
+        if (i > 0 && /[\s\-_.]/.test(n.charAt(i - 1))) return 2 + i / 1000;   // start of a later word
+        if (it.ini.startsWith(q)) return 2.5;                                   // initials: "vsc" -> Visual Studio Code
+        if (i >= 0) return 3 + i / 1000;                                        // anywhere in the name
+        if (q.length >= 3) {                                                    // letters in order: "dlp" -> Dolphin
+            let p = 0;
+            for (let k = 0; k < q.length && p >= 0; ++k) { p = n.indexOf(q.charAt(k), p); if (p >= 0) ++p; }
+            if (p >= 0) return 5 + (p - q.length) / 100;
+        }
+        return it.dl.indexOf(q) >= 0 ? 6 : -1;                                  // description / generic name
+    }
+    function matchApps(q) {           // pure and allocation-light: the part that runs on every keystroke
+        ensureIndex();
+        const tokens = q.split(/\s+/), hits = [], idx = searchIndex;
+        for (let i = 0; i < idx.length; ++i) {
+            const it = idx[i];
+            let sc = 0;
+            for (let k = 0; k < tokens.length; ++k) { const ts = tokenScore(it, tokens[k]); if (ts < 0) { sc = -1; break; } sc += ts; }
+            if (sc >= 0) hits.push({ it: it, s: sc });
+        }
+        return hits.sort((a, b) => a.s - b.s || (a.it.nl < b.it.nl ? -1 : 1));
+    }
+    function updateSearch() {
+        const q = search.text.trim().toLowerCase();
+        if (!q) { if (found.length) { found = []; foundModel.clear(); } if (runnerRows.length) runnerRows = []; return; }
+        const hits = matchApps(q);
+        const out = [], seen = {};
+        if (hits.length) out.push({ h: i18n("Applications") });
+        for (const h of hits.slice(0, 14)) { out.push({ src: h.it.src, idx: h.it.idx, name: h.it.name, icon: h.it.icon, desc: h.it.desc }); seen[h.it.name] = true; }
+        let group = null;
+        for (const r of runnerRows) {                                            // KRunner rows, converted once when they arrive
+            if (seen[r.name] || r.group === "Applications") continue;            // already listed (instantly) above
+            if (r.group !== group) { out.push({ h: r.group }); group = r.group; }
+            out.push(r);
+        }
+        found = out;
+        // rows keep their delegates and just re-bind to `found`: only the row COUNT changes in the model
+        if (foundModel.count < out.length) { for (let n = out.length - foundModel.count; n > 0; --n) foundModel.append({ k: 0 }); }
+        else if (foundModel.count > out.length) foundModel.remove(out.length, foundModel.count - out.length);
+    }
+    property var runnerRows: []
+    function refreshRunnerRows() {
+        const m = resultModel, rows = [];
+        if (m && search.text.trim().length >= 2) for (let i = 0; i < m.count; ++i) {
+            const ix = m.index(i, 0);
+            rows.push({ src: m, idx: i, name: m.data(ix, 0) || "", icon: m.data(ix, 1), desc: m.data(ix, 257) || "", group: m.data(ix, 258) || "" });
+        }
+        runnerRows = rows;
+        updateSearch();
+    }
     function rowInfo(src, i) { const ix = src.index(i, 0); return { favoriteId: src.data(ix, 259), actionList: src.data(ix, 265) }; }
     // one shared tooltip for every tile (a tooltip object per tile would be hundreds of objects)
     property Item tipTarget: null
@@ -219,7 +287,7 @@ Kicker.DashboardWindow {
             appsGrid.positionViewAtBeginning();
             favGrid.positionViewAtBeginning();
             search.forceActiveFocus();
-            intro.restart();
+            panel.opacity = 1;   // appears instantly: no fade, no animation
         } else hoverTip(null, "");
     }
 
@@ -307,8 +375,24 @@ Kicker.DashboardWindow {
         Timer { id: groupTimer; interval: 50; onTriggered: win.rebuildGroups() }
         Timer { id: rebuildTimer; interval: 30; onTriggered: win.rebuild() }
         Timer { id: tipTimer; interval: 700; onTriggered: { if (win.tipTarget) { tip.parent = win.tipTarget; tip.text = win.tipText; tip.open(); } } }
-        Timer { id: queryTimer; interval: 90; onTriggered: win.launcher.runnerModel.query = search.text }
+        Timer { id: queryTimer; interval: 20; onTriggered: win.launcher.runnerModel.query = search.text }
+        Connections {
+            target: win.launcher.runnerModel
+            function onCountChanged() { Qt.callLater(win.refreshRunnerRows); }
+            function onQueryingChanged() { Qt.callLater(win.refreshRunnerRows); }
+        }
+        Connections {
+            target: win.resultModel
+            function onCountChanged() { Qt.callLater(win.refreshRunnerRows); }
+            function onRowsInserted() { Qt.callLater(win.refreshRunnerRows); }
+            function onModelReset() { Qt.callLater(win.refreshRunnerRows); }
+            function onDataChanged() { Qt.callLater(win.refreshRunnerRows); }
+        }
+        // load KRunner's plugins once, in the background, so the first real search is not the slow one
+        Timer { interval: 3500; running: true; onTriggered: if (!win.visible) { win.launcher.runnerModel.query = "ab"; warmOff.start(); } }
+        Timer { id: warmOff; interval: 1500; onTriggered: if (!win.searching) win.launcher.runnerModel.query = "" }
         QQC2.ToolTip { id: tip }
+        ListModel { id: foundModel }
         QQC2.Menu {
             id: ctx
             property var entries: []
@@ -360,7 +444,6 @@ Kicker.DashboardWindow {
             width: Math.min(parent.width - 48 - (win.settingsOpen ? win.settingsW + 16 : 0), 2200, Math.max(win.settingsOpen ? 760 : 960, parent.width * win.cfg.panelWidth / 100))
             height: parent.height - 2 * Math.max(28, parent.height * 0.05)
 
-            NumberAnimation { id: intro; target: panel; property: "opacity"; from: win.anim ? 0 : 1; to: 1; duration: 160 } // fade only: scaling the whole panel re-rasterises all text
 
             ColumnLayout {
                 anchors.fill: parent
@@ -444,14 +527,17 @@ Kicker.DashboardWindow {
                             leftPadding: 54
                             rightPadding: 48
                             selectByMouse: true
-                            onTextChanged: { if (text.length) queryTimer.restart(); else { queryTimer.stop(); win.launcher.runnerModel.query = ""; } }
+                            onTextChanged: {
+                                win.updateSearch();   // instant: apps are matched right now, in this keystroke
+                                if (text.trim().length >= 2) queryTimer.restart(); else { queryTimer.stop(); win.launcher.runnerModel.query = ""; }
+                            }
                             Keys.onDownPressed: {
-                                if (win.searching) { results.forceActiveFocus(); results.currentIndex = 0; }
+                                if (win.searching) { results.forceActiveFocus(); results.currentIndex = Math.max(0, win.found.findIndex(r => r.h === undefined)); }
                                 else if (!win.alpha) { appsGrid.forceActiveFocus(); appsGrid.currentIndex = 0; }
                             }
                             Keys.onLeftPressed: event => { if (cursorPosition === 0 && !win.searching) { favGrid.forceActiveFocus(); if (favGrid.currentIndex < 0) favGrid.currentIndex = 0; } else event.accepted = false; }
                             Keys.onReturnPressed: {
-                                if (win.searching && results.count > 0) win.launch(win.resultModel, 0);
+                                if (win.searching) { const r = win.found.find(x => x.h === undefined); if (r) win.launch(r.src, r.idx); }
                                 else if (!win.searching && win.alpha && win.groups.length) win.launch(win.groups[0].items[0].src, win.groups[0].items[0].idx);
                                 else if (!win.searching && !win.alpha && appsGrid.count > 0) win.launch(win.activeModel, 0);
                             }
@@ -585,38 +671,41 @@ Kicker.DashboardWindow {
                                     }
                                 }
 
-                                // search results (merged KRunner results, grouped by type)
+                                // search results: instant app matches first, then KRunner's (calculator, settings, files, ...)
                                 ListView {
                                     id: results
+                                    objectName: "results"
                                     clip: true
-                                    model: win.searching ? win.resultModel : null
-                                    keyNavigationEnabled: true
+                                    model: win.searching ? foundModel : null
+                                    reuseItems: true
                                     boundsBehavior: Flickable.StopAtBounds
                                     SmoothScroll {}
                                     QQC2.ScrollBar.vertical: QQC2.ScrollBar { policy: QQC2.ScrollBar.AsNeeded }
-                                    section.property: "group"
-                                    section.delegate: Text {
-                                        required property string section
-                                        text: section
-                                        font: win.f(0.9); color: win.text; opacity: 0.6
-                                        topPadding: 10; bottomPadding: 2; leftPadding: 10
-                                    }
-                                    Keys.onReturnPressed: if (currentIndex >= 0) win.launch(win.resultModel, currentIndex)
-                                    Keys.onUpPressed: event => { if (currentIndex === 0) search.forceActiveFocus(); else event.accepted = false; }
-                                    delegate: AppTile {
-                                        required property var model
+                                    function step(dir) { let i = currentIndex + dir; while (i >= 0 && i < count && win.found[i].h !== undefined) i += dir; return i; }
+                                    Keys.onDownPressed: { const i = step(1); if (i < count) currentIndex = i; }
+                                    Keys.onUpPressed: { const i = step(-1); if (i >= 0) currentIndex = i; else search.forceActiveFocus(); }
+                                    Keys.onReturnPressed: { const r = win.found[currentIndex]; if (r && r.h === undefined) win.launch(r.src, r.idx); }
+                                    delegate: Item {
+                                        id: rowRoot
                                         required property int index
-                                        ui: win
+                                        readonly property var row: win.found[index] || ({ h: "" })   // bound to the live results: re-binds in place
+                                        readonly property bool isHead: row.h !== undefined
                                         width: ListView.view.width
-                                        height: Math.max(56, win.iconPx * 0.8 + 16)
-                                        listMode: true
-                                        label: model.display
-                                        subtitle: model.description || ""
-                                        icon: model.decoration
-                                        iconSize: Math.round(win.iconPx * 0.8)
-                                        current: ListView.isCurrentItem && ListView.view.activeFocus
-                                        onActivated: win.launch(win.resultModel, index)
-                                        onContextRequested: (x, y) => win.openMenu(this, x, y, win.resultModel, index, model, false)
+                                        height: isHead ? 34 : Math.max(56, win.iconPx * 0.8 + 16)
+                                        Text { visible: rowRoot.isHead; x: 10; anchors.bottom: parent.bottom; bottomPadding: 4; text: rowRoot.isHead ? rowRoot.row.h : ""; font: win.f(0.9); color: win.text; opacity: 0.6 }
+                                        AppTile {
+                                            visible: !rowRoot.isHead
+                                            anchors.fill: parent
+                                            ui: win
+                                            listMode: true
+                                            label: rowRoot.isHead ? "" : rowRoot.row.name
+                                            subtitle: rowRoot.isHead ? "" : rowRoot.row.desc
+                                            icon: rowRoot.isHead ? "" : rowRoot.row.icon
+                                            iconSize: Math.round(win.iconPx * 0.8)
+                                            current: rowRoot.ListView.isCurrentItem && rowRoot.ListView.view.activeFocus
+                                            onActivated: if (!rowRoot.isHead) win.launch(rowRoot.row.src, rowRoot.row.idx)
+                                            onContextRequested: (x, y) => { if (!rowRoot.isHead) win.openMenu(this, x, y, rowRoot.row.src, rowRoot.row.idx, win.rowInfo(rowRoot.row.src, rowRoot.row.idx), false); }
+                                        }
                                     }
                                     Text {
                                         anchors.centerIn: parent
