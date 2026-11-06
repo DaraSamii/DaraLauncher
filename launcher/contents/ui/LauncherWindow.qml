@@ -32,7 +32,6 @@ Kicker.DashboardWindow {
     // --- style helpers used by AppTile and the inline components ---------
     readonly property int gap: cfg.tileSpacing
     readonly property int radius: cfg.tileRadius
-    readonly property int labelLines: cfg.labelLines
     readonly property bool anim: cfg.animations
     readonly property color text: Qt.rgba(1, 1, 1, 0.94)
     readonly property color accent: cfg.accentMode === 0 ? scene.Kirigami.Theme.highlightColor : cfg.accentColor
@@ -44,7 +43,9 @@ Kicker.DashboardWindow {
     readonly property int appTileW: iconPx + 64
     property var fontCache: ({})
     readonly property string fontKey: (cfg.fontFamily || "") + "|" + fontScale
-    onFontKeyChanged: fontCache = ({})
+    onFontKeyChanged: { fontCache = ({}); textCache = ({}); groupTimer.restart(); }
+    onIconPxChanged: groupTimer.restart()
+    onFavTileWChanged: groupTimer.restart()
     function f(mult) {
         fontCache; // dependency: bindings re-evaluate when the cache is reset
         return fontCache[mult] || (fontCache[mult] = Qt.font({ family: cfg.fontFamily || Qt.application.font.family, pixelSize: Math.round(15 * fontScale / 100 * mult) }));
@@ -62,7 +63,29 @@ Kicker.DashboardWindow {
     // what the app area really lays out (shown in the settings drawer)
     readonly property int appCols: alpha ? alphaView.cols : appsGrid.cols
     readonly property int appCellW: alpha ? Math.floor(alphaView.width / alphaView.cols) : appsGrid.cellWidth
-    function cellHeight(icon) { return icon + win.cfg.labelLines * win.fontScale * 0.17 + 30; }
+    // --- tile geometry: an app's name is never cut or elided. It wraps (even inside a long word) and every row of tiles
+    // is as tall as its longest wrapped name, measured with a hidden Text at the tile's real text width.
+    property var textCache: ({})
+    function nameH(name, w) {
+        const k = name + "|" + w;
+        textCache; // dependency: reset when the font changes
+        let h = textCache[k];
+        if (h === undefined) { probe.width = w; probe.text = name; probe.font = f(1); h = textCache[k] = Math.ceil(probe.implicitHeight); }
+        return h;
+    }
+    function tileH(names, cellW) { let m = 0; for (const n of names) m = Math.max(m, nameH(n, cellW - 12)); return iconPx + 12 + m + 12; }
+    function namesOf(src) { const r = []; if (src) for (let i = 0; i < src.count; ++i) r.push(src.data(src.index(i, 0), 0) || ""); return r; }
+    // Measured imperatively (never inside a binding: reading the probe from bindings makes them re-trigger each other).
+    // favorites never take more than ~30% of the width: big icons on a small screen drop a column instead of squeezing the apps
+    readonly property int favCols: Math.max(1, Math.min(cfg.favColumns, Math.floor(panel.width * 0.30 / favTileW)))
+    property int favCellH: 80
+    property int gridCellH: 80
+    function refreshMetrics() {
+        favCellH = tileH(namesOf(favModel), favTileW);
+        gridCellH = tileH(namesOf(activeModel), appsGrid.cellWidth);
+    }
+    // all five power buttons share one width, wide enough for the longest label
+    readonly property int powerW: { let w = 0; for (const t of [i18n("Lock"), i18n("Sleep"), i18n("Log out"), i18n("Restart"), i18n("Shut down")]) w = Math.max(w, pwFm.advanceWidth(t)); return Math.max(104, cfg.powerSize + 56, Math.ceil(w) + 28); }
 
     // --- categories: All / Recent / Most used / the real menu categories --
     property var cats: []
@@ -105,18 +128,19 @@ Kicker.DashboardWindow {
         return L.toLowerCase() === L.toUpperCase() && L.charCodeAt(0) < 128 ? "#" : L; // digits and symbols
     }
     function rebuildGroups() {
-        if (!activeModel) { groups = []; rebuildRows(); return; }
+        if (!activeModel) { groups = []; rebuildRows(); refreshMetrics(); return; }
         const by = {};
         for (const it of itemsOf(activeModel)) (by[letterOf(it.name)] = by[letterOf(it.name)] || []).push(it);
         groups = Object.keys(by).sort((a, b) => a === "#" ? -1 : b === "#" ? 1 : a.localeCompare(b)).map(L => ({ letter: L, items: by[L] }));
         rebuildRows();
+        refreshMetrics();
     }
     function rebuildRows() {
-        const cols = alphaView.cols, out = [], heads = [];
+        const cols = alphaView.cols, cw = Math.floor(alphaView.width / cols), out = [], heads = [];
         for (const g of groups) {
             heads.push(out.length);
             out.push({ h: g.letter });
-            for (let i = 0; i < g.items.length; i += cols) out.push({ t: g.items.slice(i, i + cols) });
+            for (let i = 0; i < g.items.length; i += cols) { const t = g.items.slice(i, i + cols); out.push({ t: t, rowH: tileH(t.map(x => x.name), cw) }); }
         }
         rows = out;
         headerRows = heads;
@@ -232,7 +256,7 @@ Kicker.DashboardWindow {
         property string label
         property bool danger: false
         signal clicked()
-        Layout.preferredWidth: Math.max(104, win.cfg.powerSize + 56)
+        Layout.preferredWidth: win.powerW
         Layout.preferredHeight: win.cfg.powerSize + 48
         implicitWidth: Layout.preferredWidth
         implicitHeight: Layout.preferredHeight
@@ -266,7 +290,11 @@ Kicker.DashboardWindow {
         Connections { target: win.cfg; function onShowRecentChanged() { rebuildTimer.restart(); } function onShowFrequentChanged() { rebuildTimer.restart(); } }
         Connections { target: win.activeModel; function onCountChanged() { groupTimer.restart(); } function onModelReset() { groupTimer.restart(); } function onLayoutChanged() { groupTimer.restart(); } }
         FontMetrics { id: catFm; font: win.f(1.1) }
+        FontMetrics { id: pwFm; font: win.f(0.95) }
+        Text { id: probe; visible: false; wrapMode: Text.WrapAtWordBoundaryOrAnywhere; horizontalAlignment: Text.AlignHCenter }
         Connections { target: alphaView; function onColsChanged() { groupTimer.restart(); } }
+        Connections { target: appsGrid; function onCellWidthChanged() { groupTimer.restart(); } }
+        Connections { target: win.favModel; function onCountChanged() { groupTimer.restart(); } }
         TaskManager.TasksModel { id: tasks; groupMode: TaskManager.TasksModel.GroupDisabled; separateLaunchers: false }
         TaskManager.VirtualDesktopInfo { id: vdi }
         Timer { id: armWatch; interval: 700; onTriggered: { win.taskBase = tasks.count; win.watching = true; } }  // ignore the activation churn of opening
@@ -346,7 +374,7 @@ Kicker.DashboardWindow {
                     // ---- left: favorites (scrollable, any number) -------------
                     Card {
                         visible: win.cfg.showFavorites
-                        Layout.preferredWidth: win.cfg.favColumns * win.favTileW + 40 + 14
+                        Layout.preferredWidth: win.favCols * win.favTileW + 40 + 14
                         Layout.fillHeight: true
                         ColumnLayout {
                             anchors.fill: parent
@@ -364,14 +392,14 @@ Kicker.DashboardWindow {
                                 clip: true
                                 model: win.cfg.showFavorites ? win.favModel : null
                                 cellWidth: win.favTileW
-                                cellHeight: win.cellHeight(win.iconPx)
+                                cellHeight: win.favCellH
                                 keyNavigationEnabled: true
                                 boundsBehavior: Flickable.StopAtBounds
                                 SmoothScroll {}
                                 QQC2.ScrollBar.vertical: QQC2.ScrollBar { policy: QQC2.ScrollBar.AsNeeded }
                                 Keys.onReturnPressed: if (currentIndex >= 0) win.launch(win.favModel, currentIndex)
-                                Keys.onUpPressed: event => { if (currentIndex < win.cfg.favColumns) search.forceActiveFocus(); else event.accepted = false; }
-                                Keys.onRightPressed: event => { if (currentIndex % win.cfg.favColumns === win.cfg.favColumns - 1 && !win.alpha) { appsGrid.forceActiveFocus(); if (appsGrid.currentIndex < 0) appsGrid.currentIndex = 0; } else event.accepted = false; }
+                                Keys.onUpPressed: event => { if (currentIndex < win.favCols) search.forceActiveFocus(); else event.accepted = false; }
+                                Keys.onRightPressed: event => { if (currentIndex % win.favCols === win.favCols - 1 && !win.alpha) { appsGrid.forceActiveFocus(); if (appsGrid.currentIndex < 0) appsGrid.currentIndex = 0; } else event.accepted = false; }
                                 delegate: AppTile {
                                     required property var model
                                     required property int index
@@ -466,13 +494,14 @@ Kicker.DashboardWindow {
                                         boundsBehavior: Flickable.StopAtBounds
                                         readonly property int cols: win.cfg.appColumns > 0 ? win.cfg.appColumns : Math.max(1, Math.floor(width / win.appTileW))
                                         SmoothScroll {}
+                                        onWidthChanged: groupTimer.restart()
                                         QQC2.ScrollBar.vertical: QQC2.ScrollBar { policy: QQC2.ScrollBar.AsNeeded }
                                         delegate: Item {
                                             id: rowItem
                                             required property var modelData
                                             readonly property bool isHead: modelData.h !== undefined
                                             width: alphaView.width
-                                            height: isHead ? win.headerH : win.cellHeight(win.iconPx)
+                                            height: isHead ? win.headerH : rowItem.modelData.rowH
                                             Text { id: headText; visible: rowItem.isHead; x: 12; height: parent.height; verticalAlignment: Text.AlignVCenter; text: rowItem.isHead ? rowItem.modelData.h : ""; font: win.f(2.4); color: Qt.lighter(win.accent, 1.7) }
                                             Rectangle { visible: rowItem.isHead; x: headText.width + 24; width: Math.max(0, parent.width - x - 10); y: parent.height / 2; height: 1; color: Qt.rgba(1, 1, 1, 0.16) }
                                             Repeater {
@@ -525,7 +554,7 @@ Kicker.DashboardWindow {
                                     clip: true
                                     model: !win.alpha && !win.searching ? win.activeModel : null
                                     cellWidth: Math.floor(width / cols)
-                                    cellHeight: list ? win.iconPx + 24 : win.cellHeight(win.iconPx)
+                                    cellHeight: list ? win.iconPx + 24 : win.gridCellH
                                     keyNavigationEnabled: true
                                     boundsBehavior: Flickable.StopAtBounds
                                     SmoothScroll {}

@@ -35,11 +35,11 @@ for _ in $(seq 1 240); do
   sleep 1
   journalctl --user --since "$since" -o cat 2>/dev/null | grep -q "SUITE DONE" && break
 done
-log=$(journalctl --user --since "$since" -o cat 2>/dev/null | grep -E "^(TEST|SUITE)|Error|TypeError|ReferenceError" | grep -v "weathertest\|HourlyChart")
+log=$(journalctl --user --since "$since" -o cat 2>/dev/null | grep -E "^(TEST|SUITE)|Error|TypeError|ReferenceError|Binding loop|recursive rearrange" | grep -v "weathertest\|HourlyChart")
 pkill -f "plasmawindowed $ID" 2>/dev/null
 echo "$log" | sed 's/^TEST PASS/  ok  /; s/^TEST FAIL/FAIL  /; s/^TEST ----/\n--/'
 echo
 echo "$log" | grep -E "SUITE DONE" || { echo "SUITE DID NOT FINISH"; fail=1; }
 echo "$log" | grep -q "^TEST FAIL" && fail=1
-echo "$log" | grep -E "TypeError|ReferenceError" >/dev/null && { echo "QML runtime errors seen above"; fail=1; }
+echo "$log" | grep -E "TypeError|ReferenceError|Binding loop|recursive rearrange" >/dev/null && { echo "QML runtime errors / binding loops seen above"; fail=1; }
 exit $fail

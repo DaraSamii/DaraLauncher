@@ -40,9 +40,8 @@ Item {
         x: tile.listMode ? tile.iconSize + 26 : 6
         width: tile.listMode ? tile.width - x - 10 : tile.width - 12
         y: tile.listMode ? (tile.subtitle ? tile.height / 2 - implicitHeight : (tile.height - implicitHeight) / 2) : tile.iconSize + 12
-        wrapMode: tile.listMode ? Text.NoWrap : Text.Wrap
-        maximumLineCount: tile.listMode ? 1 : ui.labelLines
-        elide: Text.ElideRight
+        wrapMode: tile.listMode ? Text.NoWrap : Text.WrapAtWordBoundaryOrAnywhere   // names wrap, they are never cut
+        elide: tile.listMode ? Text.ElideRight : Text.ElideNone
         horizontalAlignment: tile.listMode ? Text.AlignLeft : Text.AlignHCenter
     }
     Text {

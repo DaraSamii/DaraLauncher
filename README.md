@@ -7,8 +7,8 @@ dimmed wallpaper · scrollable favorites · A–Z sections · categories on the 
 
 [![Plasma 6](https://img.shields.io/badge/KDE%20Plasma-6.x-1d99f3?logo=kde&logoColor=white)](https://kde.org/plasma-desktop/)
 [![Qt 6 / QML](https://img.shields.io/badge/Qt%206-QML-41cd52?logo=qt&logoColor=white)](https://doc.qt.io/qt-6/qtqml-index.html)
-[![Tests](https://img.shields.io/badge/UI%20tests-185%20checks%20passing-2ea44f)](#testing)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/UI%20tests-309%20checks%20passing-2ea44f)](#testing)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 <img src="docs/demo.gif" alt="Demo: scrolling, categories, calculator search, grid and list views, live settings" width="900">
 
@@ -45,6 +45,7 @@ favorites as you like** in a scrollable column, **every app grouped under big le
 - **Search on top**: type anywhere to start. It uses KRunner, so besides apps it finds settings pages, files and bookmarks, and does math (`128/4+17` → `49`) and unit conversion.
 - **Categories on the right**, in a column exactly as wide as its longest name. *All Applications*, *Recent* and *Most used* are kept apart from the real categories by a divider.
 - **Three ways to browse** all apps: **A–Z sections** with big letter headings and a clickable A–Z rail (default), a **grid**, or a **one-column list** with descriptions.
+- **App names are always shown in full.** Long names wrap (even inside a long word) and each row grows to fit its longest name; nothing is ever cut with “…”. Category names and power-button labels are never clipped either.
 - **Big, labelled power buttons** — Lock, Sleep, Log out, Restart, Shut down — aligned to the edges of the cards.
 
 **Look**
@@ -67,7 +68,7 @@ favorites as you like** in a scrollable column, **every app grouped under big le
 |:--:|:--:|
 | <img src="docs/sections-scrolled.png" width="440"><br>**A–Z sections**, scrolled | <img src="docs/category.png" width="440"><br>**A category** (Games) |
 | <img src="docs/search.png" width="440"><br>**Search**: the calculator answers inline | <img src="docs/grid.png" width="440"><br>**Grid** view |
-| <img src="docs/list.png" width="440"><br>**List** view: one column, with descriptions | <img src="docs/settings-huge.png" width="440"><br>**Huge** icons, picked live in the settings drawer |
+| <img src="docs/list.png" width="440"><br>**List** view: one column, with descriptions | <img src="docs/settings-huge.png" width="440"><br>**Big** icons, chosen live in the settings drawer |
 
 <div align="center">
   <img src="docs/settings.png" alt="The settings drawer open beside the launcher" width="900"><br>
@@ -118,7 +119,7 @@ Open the **gear** at the bottom left: a drawer slides in from the right while th
 | **All apps** | Fit icons per row automatically, or fix the number (1–14) |
 | **Behavior** | What to show on open (All apps / Recent / Most used / Last used) · clear search on open · close after launching · close when clicking far away · keep the taskbar visible · show favorites · show category list · show A–Z rail · show power buttons |
 | **Look** | Wallpaper dim and blur · card tint · corner radius · power button size |
-| **Configure dialog only** | Panel icon · wallpaper source (current / custom image / none) · font family · accent color · animations · tile spacing · launcher width · label lines · show *Recent* / *Most used* categories |
+| **Configure dialog only** | Panel icon · wallpaper source (current / custom image / none) · font family · accent color · animations · tile spacing · launcher width · show *Recent* / *Most used* categories |
 
 Settings are stored per widget, so two launchers on two panels can look different.
 
@@ -150,7 +151,7 @@ A launcher is the front door of the desktop, so it ships with an **end-to-end te
 ./tests/run.sh "scrolling"   # only tests whose name contains the text ("a|b" for several)
 ```
 
-It copies the package to a **sandbox plugin id** (your real widget and settings are untouched), replaces app launching and power actions with recorders (nothing is ever started, nothing is ever shut down), and runs the launcher in `plasmawindowed`. **185 checks** across **30 scenarios** currently pass, covering:
+It copies the package to a **sandbox plugin id** (your real widget and settings are untouched), replaces app launching and power actions with recorders (nothing is ever started, nothing is ever shut down), and runs the launcher in `plasmawindowed`. **309 checks** across **32 scenarios** currently pass, covering:
 
 - every button, view mode and category, with the effect verified, not just "the click happened";
 - the settings drawer: all presets, every slider, every checkbox, the start-category chips, *Reset sizes*, and that each option really shows or hides its part of the UI;
@@ -158,9 +159,11 @@ It copies the package to a **sandbox plugin id** (your real widget and settings 
 - click-away behavior: near misses stay open, far clicks close, the option can disable it;
 - the taskbar mode: desktop change and new app close it, a popup window does not;
 - scrolling (exact wheel distances, the A–Z rail), layout alignment invariants (power buttons identical and flush with the cards, gear aligned, columns in order), configuration schema consistency and that every config page compiles;
+- **app names are whole**: every icon size × text size, in sections and grid views, scrolled through every row;
+- **laptop screens**: at 1536 × 864 the apps area keeps at least two columns at every icon size, with and without the settings drawer;
 - performance budgets: regrouping time, first frame after opening, and scroll frame pacing (typically p95 ≈ 15–20 ms).
 
-Static checks run first (`qmllint`, and a script that makes sure every setting the QML reads exists in the schema).
+Static checks run first (`qmllint`, and a script that makes sure every setting the QML reads exists in the schema). Any QML **binding loop** or layout recursion logged during the run fails the suite.
 
 `tools/media.sh` regenerates the screenshots and the demo GIF above by driving the same sandbox through a scripted tour.
 
@@ -192,6 +195,6 @@ No network access, no telemetry. The launcher reads only your Plasma configurati
 
 ## Credits and license
 
-MIT — see [LICENSE](LICENSE).
-Screenshots use the *Milky Way* wallpaper by ruvkr (CC-BY-SA-4.0) from KDE's default wallpapers and the Breeze icon theme.
+Released under the **[GNU General Public License v3.0](LICENSE)** © 2026 Dara Samii.
+Screenshots use the *Altai* wallpaper by Alesya Khoteeva (CC-BY-SA-4.0) from KDE's default wallpapers, captured at laptop size (1536 × 864), and the Breeze icon theme.
 Built on KDE Plasma, Qt Quick and Kirigami. Not affiliated with or endorsed by KDE.

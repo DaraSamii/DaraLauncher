@@ -2,7 +2,7 @@ import QtQuick
 
 // Scripted tour of the launcher for the README: grabs numbered frames (-> demo.gif) and a few full-size screenshots.
 // Injected into a sandbox copy by tools/media.sh; uses a stock KDE wallpaper and a restricted search (apps, calculator,
-// settings) so nothing personal ends up in the pictures.
+// settings) so nothing personal ends up in the pictures. Captured at laptop size on a light wallpaper (Altai).
 Item {
     id: me
     required property var root
@@ -24,9 +24,11 @@ Item {
 
     readonly property var plan: [
         [0,     () => {
-            cfg.wallpaperMode = 1; cfg.wallpaperPath = "/usr/share/wallpapers/MilkyWay/contents/images/5120x2880.png"; cfg.dim = 52; cfg.blur = 38;
+            cfg.wallpaperMode = 1; cfg.wallpaperPath = "/usr/share/wallpapers/Altai/contents/images/5120x2880.png"; cfg.dim = 36; cfg.blur = 28; cfg.cardOpacity = 18;
             root.runnerModel.runners = ["krunner_services", "calculator", "krunner_systemsettings"];
-            cfg.viewMode = 0; cfg.iconPreset = 2; cfg.textPreset = 2; cfg.keepTaskbar = false; win.toggle();
+            cfg.viewMode = 0; cfg.iconPreset = 2; cfg.textPreset = 2; cfg.keepTaskbar = false;
+            win.x = 80; win.y = 80; win.width = 1536; win.height = 864;   // a typical 1080p laptop at 125% scaling
+            win.visibility = Window.Windowed;
         }],
         [900,   () => { av = items().find(it => it.reuseItems === true && it.contentY !== undefined); }],
         [1700,  () => shot("hero")],
@@ -62,7 +64,7 @@ Item {
             me.pending = me.pending.filter(p => { if (p[0] <= me.elapsed) { p[1](); return false; } return true; });
             if (me.elapsed > 900 && me.elapsed < 21000) {
                 const n = ("000" + me.frames++).slice(-4);
-                win.mainItem.grabToImage(r => r.saveToFile(me.out + "/frames/f" + n + ".png"), Qt.size(win.width * 0.4, win.height * 0.4));
+                win.mainItem.grabToImage(r => r.saveToFile(me.out + "/frames/f" + n + ".png"), Qt.size(win.width * 0.6, win.height * 0.6));
             }
         }
     }

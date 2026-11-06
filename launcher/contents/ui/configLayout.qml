@@ -15,8 +15,6 @@ KCM.SimpleKCM {
     property int cfg_iconPresetDefault
     property int cfg_tileSpacing
     property int cfg_tileSpacingDefault
-    property int cfg_labelLines
-    property int cfg_labelLinesDefault
     property int cfg_favColumns
     property int cfg_favColumnsDefault
     property int cfg_appColumns
@@ -49,11 +47,6 @@ KCM.SimpleKCM {
             Kirigami.FormData.label: i18n("Tile spacing:")
             QQC2.Slider { from: 0; to: 24; stepSize: 2; value: cfg_tileSpacing; onMoved: cfg_tileSpacing = value; Layout.preferredWidth: Kirigami.Units.gridUnit * 12 }
             QQC2.Label { text: cfg_tileSpacing + " px"; Layout.preferredWidth: Kirigami.Units.gridUnit * 3 }
-        }
-        RowLayout {
-            Kirigami.FormData.label: i18n("Label lines:")
-            QQC2.Slider { from: 1; to: 3; stepSize: 1; value: cfg_labelLines; onMoved: cfg_labelLines = value; Layout.preferredWidth: Kirigami.Units.gridUnit * 12 }
-            QQC2.Label { text: cfg_labelLines + ""; Layout.preferredWidth: Kirigami.Units.gridUnit * 3 }
         }
         Kirigami.Separator { Kirigami.FormData.isSection: true; Kirigami.FormData.label: i18n("Favorites (left)") }
         RowLayout {

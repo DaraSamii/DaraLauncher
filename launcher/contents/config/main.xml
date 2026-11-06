@@ -19,7 +19,6 @@
     <entry name="powerSize" type="Int"><default>40</default></entry>
     <entry name="iconPreset" type="Int"><default>2</default></entry>
     <entry name="tileSpacing" type="Int"><default>6</default></entry>
-    <entry name="labelLines" type="Int"><default>2</default></entry>
   </group>
   <group name="Appearance">
     <entry name="textPreset" type="Int"><default>2</default></entry>

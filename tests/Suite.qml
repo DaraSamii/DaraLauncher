@@ -49,7 +49,7 @@ Item {
     function key(k) { win.keys.keyClick(k); tc.wait(80); }
     function show() { if (!win.visible) { win.toggle(); tc.wait(250); } }
     function reset() {
-        for (const k of ["viewMode", "panelWidth", "favColumns", "appColumns", "iconPreset", "textPreset", "tileSpacing", "labelLines", "dim", "blur", "cardOpacity", "tileRadius", "powerSize",
+        for (const k of ["viewMode", "panelWidth", "favColumns", "appColumns", "iconPreset", "textPreset", "tileSpacing", "dim", "blur", "cardOpacity", "tileRadius", "powerSize",
                          "startCategory", "clearSearch", "closeOnLaunch", "closeOnClickOutside", "keepTaskbar", "showFavorites", "showLetterRail", "showCategories", "showRecent", "showFrequent", "showPower", "animations"])
             cfg[k] = cfg[k + "Default"];
         show();
@@ -86,6 +86,52 @@ Item {
         ["efficiency: only visible rows hold tiles", () => {
             const n = tiles().length;
             ok("tile count is bounded", n < win.favModel.count + 70, n + " tiles alive for " + win.cats[0].model.count + " apps");
+        }],
+        ["names are never cut: apps, categories and power buttons, at every size, in every view", () => {
+            const nameText = tile => tile.children.find(c => c.text !== undefined && c.text === tile.label && c.font !== undefined);
+            const audit = what => {
+                const bad = []; let n = 0;
+                for (const t of tiles()) {
+                    if (!inView(t)) continue;
+                    const nt = nameText(t); if (!nt) continue;
+                    ++n;
+                    if (nt.truncated) bad.push(t.label + " (elided)");
+                    else if (!t.listMode && nt.y + nt.implicitHeight > t.height + 1) bad.push(t.label + " (overflows its tile)");
+                }
+                ok(what + ": " + n + " names whole", n > 0 && bad.length === 0, bad.slice(0, 4).join("; "));
+            };
+            const walkSections = what => { const av = alphaView(); for (let i = 0; i < win.rows.length; i += 7) { av.positionViewAtIndex(i, ListView.Beginning); tc.wait(70); audit(what + " @row " + i); } };
+            for (const ip of [0, 2, 4]) for (const tp of [0, 2, 4]) {
+                cfg.iconPreset = ip; cfg.textPreset = tp; cfg.viewMode = 0; tc.wait(350);
+                walkSections("sections icon=" + ip + " text=" + tp);
+                cfg.viewMode = 1; tc.wait(350);
+                const g = appsGrid(); for (let y = 0, n = 0; y < g.contentHeight && n < 12; y += Math.max(200, g.height * 0.9), ++n) { g.contentY = y; tc.wait(70); audit("grid icon=" + ip + " text=" + tp + " @" + Math.round(y)); }
+            }
+            cfg.viewMode = 0; cfg.iconPreset = 4; cfg.textPreset = 4; tc.wait(400);
+            const fg = favGrid(); fg.positionViewAtBeginning(); tc.wait(100); audit("favorites at Huge/Huge");
+            // power buttons and categories at every text size
+            for (const tp of [0, 2, 4]) {
+                cfg.textPreset = tp; tc.wait(350);
+                const pbs = all(it => it.label !== undefined && it.danger !== undefined && vis(it));
+                const cut = pbs.filter(b => { const tx = all(x => x.text === b.label && x.truncated !== undefined && x.parent !== undefined).find(x => { for (let p = x.parent; p; p = p.parent) if (p === b) return true; return false; }); return !tx || tx.truncated; });
+                ok("power labels whole at text preset " + tp, cut.length === 0 && pbs.every(b => b.width === pbs[0].width), cut.map(b => b.label).join(",") + " width=" + pbs[0].width);
+                const rows = catRows(); const cutc = rows.filter(r => { const tx = all(x => x.text === r.modelData.label && x.truncated !== undefined).find(x => { for (let p = x.parent; p; p = p.parent) if (p === r) return true; return false; }); return !tx || tx.truncated; });
+                ok("category names whole at text preset " + tp, cutc.length === 0, cutc.map(r => r.modelData.label).join(","));
+            }
+        }],
+        ["laptop screen (1536 x 864): the layout stays usable at every icon size, with and without the drawer", () => {
+            win.visible = false; tc.wait(200);
+            win.x = 0; win.y = 0; win.width = 1536; win.height = 864; win.visibility = Window.Windowed; tc.wait(600);
+            const centre = () => { const av = alphaView(); return av.mapToItem(win.mainItem, 0, 0); };
+            for (const drawer of [false, true]) for (const ip of [0, 1, 2, 3, 4]) {
+                cfg.iconPreset = ip; win.settingsOpen = drawer; tc.wait(500);
+                const av = alphaView(), fg = favGrid();
+                ok("icons " + ip + (drawer ? " + drawer" : "") + ": apps area keeps >= 2 columns and >= 330 px",
+                   av.cols >= 2 && av.width >= 330, "cols=" + av.cols + " width=" + Math.round(av.width) + " favCols=" + win.favCols);
+                const bar = tipStarts("Settings").parent.mapToItem(win.mainItem, 0, 0).y;
+                ok("icons " + ip + (drawer ? " + drawer" : "") + ": everything stays inside the window", win.panelItem.mapToItem(win.mainItem, 0, win.panelItem.height).y <= win.height + 1 && bar < win.height);
+            }
+            win.settingsOpen = false; cfg.iconPreset = 2; win.visibility = Window.FullScreen; tc.wait(300);
         }],
         ["view buttons switch the page", () => {
             const st = stack();
@@ -378,7 +424,7 @@ Item {
             pop.destroy(); win.visibility = Window.FullScreen; tc.wait(300);
         }],
         ["config: every setting the UI reads exists in the schema", () => {
-            const keys = ["viewMode","panelWidth","favColumns","appColumns","iconPreset","textPreset","tileSpacing","labelLines","dim","blur","cardOpacity","tileRadius","powerSize","startCategory","lastCategory","clearSearch","closeOnLaunch","closeOnClickOutside","keepTaskbar","showFavorites","showLetterRail","showCategories","showRecent","showFrequent","showPower","animations","accentMode","accentColor","fontFamily","icon","wallpaperMode","wallpaperPath","favoritesSeeded"];
+            const keys = ["viewMode","panelWidth","favColumns","appColumns","iconPreset","textPreset","tileSpacing","dim","blur","cardOpacity","tileRadius","powerSize","startCategory","lastCategory","clearSearch","closeOnLaunch","closeOnClickOutside","keepTaskbar","showFavorites","showLetterRail","showCategories","showRecent","showFrequent","showPower","animations","accentMode","accentColor","fontFamily","icon","wallpaperMode","wallpaperPath","favoritesSeeded"];
             for (const k of keys) if (cfg[k] === undefined || cfg[k + "Default"] === undefined) ok("config key '" + k + "'", false, "missing");
             ok("all " + keys.length + " config keys present with defaults", keys.every(k => cfg[k] !== undefined && cfg[k + "Default"] !== undefined));
         }],
