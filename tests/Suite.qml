@@ -50,7 +50,7 @@ Item {
     function show() { if (!win.visible) { win.toggle(); tc.wait(250); } }
     function reset() {
         for (const k of ["viewMode", "panelWidth", "favColumns", "appColumns", "iconPreset", "textPreset", "tileSpacing", "dim", "blur", "cardOpacity", "tileRadius", "powerSize",
-                         "startCategory", "searchDocuments", "clearSearch", "closeOnLaunch", "closeOnClickOutside", "keepTaskbar", "showFavorites", "showLetterRail", "showCategories", "showRecent", "showFrequent", "showPower", "animations"])
+                         "startCategory", "searchDocuments", "clearSearch", "closeOnLaunch", "closeOnClickOutside", "showFavorites", "showLetterRail", "showCategories", "showRecent", "showFrequent", "showPower", "animations"])
             cfg[k] = cfg[k + "Default"];
         show();
         win.settingsOpen = false; win.catIndex = 0; win.searchField.clear(); win.lastLaunch = null; root.lastPower = "";
@@ -226,7 +226,7 @@ Item {
             const map = { "Clear the search box when it opens": "clearSearch", "Close after launching an app": "closeOnLaunch", "Close when clicking empty space": "closeOnClickOutside",
                           "Show favorites panel": "showFavorites", "Show category list": "showCategories", "Show A–Z letter rail": "showLetterRail", "Show power buttons": "showPower" };
             for (const c of checks()) {
-                const k = Object.keys(map).find(t => c.text.indexOf(t) === 0) ? map[Object.keys(map).find(t => c.text.indexOf(t) === 0)] : (c.text.indexOf("Keep the taskbar") === 0 ? "keepTaskbar" : null);
+                const k = Object.keys(map).find(t => c.text.indexOf(t) === 0) ? map[Object.keys(map).find(t => c.text.indexOf(t) === 0)] : null;
                 if (!k) continue;
                 ensureVisible(c); const before = cfg[k];
                 click(c, 0.1);
@@ -435,43 +435,13 @@ Item {
             ok("view mode kept", cfg.viewMode === 2 && stack().currentIndex === 1);
             cfg.viewMode = 0;
         }],
-        ["keep-taskbar option: opening works with the option on", () => {
-            cfg.keepTaskbar = true; win.visible = false; tc.wait(150); root.toggle(); tc.wait(300);
-            ok("opens (windowed beside the panel, or fullscreen fallback)", win.visible === true, "vis=" + win.visibility + " " + win.width + "x" + win.height);
-            cfg.keepTaskbar = false; win.visible = false; tc.wait(150); root.toggle(); tc.wait(300);
-            ok("back to fullscreen when switched off", win.visible === true && win.visibility === 5, "vis=" + win.visibility);
-        }],
-        ["taskbar mode: a desktop change or a new app closes the launcher; fullscreen mode ignores them", () => {
-            const gd = n => root.run("gdbus call --session --dest org.kde.KWin --object-path /KWin --method org.kde.KWin.setCurrentDesktop " + n);
-            // fullscreen: nothing is watched
-            show(); tc.wait(900); ok("not watching while fullscreen", win.watching === false, "visibility=" + win.visibility);
-            // windowed beside the taskbar (the sandbox has no panel, so size the window by hand like the real option does)
-            win.visible = false; tc.wait(200);
-            win.x = 0; win.y = 0; win.width = Math.max(800, win.width - 40); win.height = Math.max(600, win.height - 60);
-            win.visibility = Window.Windowed; tc.wait(1100);
-            ok("watching once windowed", win.visible === true && win.watching === true, "visible=" + win.visible + " watching=" + win.watching);
-            gd(2); tc.wait(1500);
-            ok("changing desktop closes the launcher", win.visible === false);
-            gd(1); tc.wait(2500); // let the desktop switch and its focus changes settle: they would (rightly) close the launcher
-            // a new app window
-            win.visibility = Window.Windowed; tc.wait(1100);
-            const before = win.visible;
-            root.run("kcalc"); let waited = 0; while (win.visible && waited < 6000) { tc.wait(250); waited += 250; }
-            ok("opening an app closes the launcher", before === true && win.visible === false, "took " + waited + " ms");
-            root.run("pkill -x kcalc"); tc.wait(2500); // let focus settle back on the window below (that activation would rightly close the launcher)
-            win.visible = false; tc.wait(300);
-            // a window that is not a task must not close it. Whether KWin lists a synthetic window as a task is up to KWin,
-            // so the rule checked is: the launcher may only close if the task list or the active task really changed.
-            win.visibility = Window.Windowed; tc.wait(1100);
-            const tm = win.tasksModel, n0 = tm.count, a0 = tm.activeTask.valid ? tm.activeTask.row : -1;
-            const pop = Qt.createQmlObject('import QtQuick; Window { flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowDoesNotAcceptFocus; width: 120; height: 80; x: 5; y: 5; color: "red"; visible: true }', win.mainItem, "popup");
-            tc.wait(1500);
-            const changed = tm.count !== n0 || (tm.activeTask.valid ? tm.activeTask.row : -1) !== a0;
-            ok("the launcher closes only when a task really appeared or became active", win.visible === true || changed, "visible=" + win.visible + " tasksChanged=" + changed);
-            pop.destroy(); win.visibility = Window.FullScreen; tc.wait(300);
+        ["opens fullscreen on the primary screen", () => {
+            win.visible = false; tc.wait(150); root.toggle(); tc.wait(300);
+            ok("fullscreen", win.visible === true && win.visibility === 5, "vis=" + win.visibility);
+            const pr = root.primaryRect(); ok("covers the whole primary screen", win.width === pr.w && Math.abs(win.height - pr.h) <= 1, win.width + "x" + win.height + " vs " + pr.w + "x" + pr.h);
         }],
         ["config: every setting the UI reads exists in the schema", () => {
-            const keys = ["viewMode","panelWidth","favColumns","appColumns","iconPreset","textPreset","tileSpacing","dim","blur","cardOpacity","tileRadius","powerSize","startCategory","searchDocuments","lastCategory","clearSearch","closeOnLaunch","closeOnClickOutside","keepTaskbar","showFavorites","showLetterRail","showCategories","showRecent","showFrequent","showPower","animations","accentMode","accentColor","fontFamily","icon","wallpaperMode","wallpaperPath","favoritesSeeded"];
+            const keys = ["viewMode","panelWidth","favColumns","appColumns","iconPreset","textPreset","tileSpacing","dim","blur","cardOpacity","tileRadius","powerSize","startCategory","searchDocuments","lastCategory","clearSearch","closeOnLaunch","closeOnClickOutside","showFavorites","showLetterRail","showCategories","showRecent","showFrequent","showPower","animations","accentMode","accentColor","fontFamily","icon","wallpaperMode","wallpaperPath","favoritesSeeded"];
             for (const k of keys) if (cfg[k] === undefined || cfg[k + "Default"] === undefined) ok("config key '" + k + "'", false, "missing");
             ok("all " + keys.length + " config keys present with defaults", keys.every(k => cfg[k] !== undefined && cfg[k + "Default"] !== undefined));
         }],

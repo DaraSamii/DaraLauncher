@@ -91,40 +91,37 @@ PlasmoidItem {
 
     LauncherWindow { id: win; launcher: root }
 
+    property double lastActivation: 0
     Connections {
         target: Plasmoid
-        function onActivated() { root.toggle(); }
-    }
-    // Free area of the panel's screen: the screen minus the panel (null when the panel cannot be located).
-    function freeRect() {
-        const pw = (compactRepresentationItem || root).Window.window;   // the panel window this widget sits in
-        if (!pw) return null;
-        const cx = pw.x + pw.width / 2, cy = pw.y + pw.height / 2;
-        for (const sc of Qt.application.screens) {
-            const r = { x: sc.virtualX, y: sc.virtualY, w: sc.width, h: sc.height };
-            if (cx < r.x || cy < r.y || cx >= r.x + r.w || cy >= r.y + r.h) continue;
-            if (pw.width > pw.height) {            // horizontal panel: cut at its top or bottom edge
-                if (cy > r.y + r.h / 2) r.h = pw.y - r.y; else { r.h = r.y + r.h - (pw.y + pw.height); r.y = pw.y + pw.height; }
-            } else {                               // vertical panel
-                if (cx > r.x + r.w / 2) r.w = pw.x - r.x; else { r.w = r.x + r.w - (pw.x + pw.width); r.x = pw.x + pw.width; }
-            }
-            return r;
+        function onActivated() {
+            const now = Date.now();
+            if (now - root.lastActivation < 150) return; // one Meta press can arrive twice (KWin's Meta + the widget's own shortcut)
+            root.lastActivation = now;
+            root.toggle();
         }
-        return null;
+    }
+    // The launcher always opens fullscreen on the primary screen, whichever screen has focus. A hidden window has no
+    // screen of its own to follow, so Qt keeps it on the primary screen; the launcher window's visualParent sits in it.
+    // Only fullscreen can choose its screen on Wayland (KWin places normal windows), so the taskbar is covered.
+    // shortcut: changing the primary screen while Plasma runs needs a plasmashell restart to be picked up.
+    readonly property Item primaryItem: primaryAnchorItem
+    Window {
+        visible: false
+        transientParent: null
+        Item { id: primaryAnchorItem; readonly property var scr: Screen }
+    }
+    function primaryRect() {
+        const s = primaryAnchorItem.scr;
+        return { x: s.virtualX, y: s.virtualY, w: s.width, h: s.height };
     }
     function toggle() {
         if (win.visible) { win.visible = false; return; }
-        const r = cfg.keepTaskbar ? freeRect() : null;
-        if (r) {
-            // sized before it is shown, so the panel is never covered, not even for one frame
-            win.x = r.x; win.y = r.y; win.width = r.w; win.height = r.h;
-            win.visibility = Window.Windowed;
-            win.requestActivate();
-        } else {
-            // not win.toggle(): that marks this widget "expanded", and Plasma then flashes an empty popup (the "big icon")
-            win.visibility = Window.FullScreen;
-            win.requestActivate();
-        }
+        const r = primaryRect();
+        win.x = r.x; win.y = r.y; win.width = r.w; win.height = r.h; // sized before it is shown: no wrong-size frame
+        // not win.toggle(): that marks this widget "expanded", and Plasma then flashes an empty popup (the "big icon")
+        win.visibility = Window.FullScreen;
+        win.requestActivate();
     }
 
     function openSettings() { Plasmoid.internalAction("configure").trigger(); }

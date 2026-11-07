@@ -26,7 +26,7 @@ Item {
         [0,     () => {
             cfg.wallpaperMode = 1; cfg.wallpaperPath = "/usr/share/wallpapers/Altai/contents/images/5120x2880.png"; cfg.dim = 36; cfg.blur = 28; cfg.cardOpacity = 18;
             root.runnerModel.runners = ["krunner_services", "calculator", "krunner_systemsettings"];
-            cfg.viewMode = 0; cfg.iconPreset = 2; cfg.textPreset = 2; cfg.keepTaskbar = false;
+            cfg.viewMode = 0; cfg.iconPreset = 2; cfg.textPreset = 2;
             win.x = 80; win.y = 80; win.width = 1536; win.height = 864;   // a typical 1080p laptop at 125% scaling
             win.visibility = Window.Windowed;
         }],

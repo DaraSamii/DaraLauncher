@@ -18,7 +18,7 @@ def patch(path, pairs):
 patch(ui + "LauncherWindow.qml", [
     ("import QtQuick\n", "import QtQuick\nimport QtTest\n"),
     ("    property alias searchField: search\n",
-     "    property alias searchField: search\n    property alias tasksModel: tasks\n    property alias keys: ktc\n    property alias contextMenu: ctx\n    property alias panelItem: panel\n    property var lastLaunch: null\n"),
+     "    property alias searchField: search\n    property alias keys: ktc\n    property alias contextMenu: ctx\n    property alias panelItem: panel\n    property var lastLaunch: null\n"),
     ("    function launch(src, index, actionId, arg) {\n",
      "    function launch(src, index, actionId, arg) {\n"
      "        lastLaunch = { name: src.data(src.index(index, 0), 0), action: actionId || \"\" };\n"

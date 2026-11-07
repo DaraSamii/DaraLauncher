@@ -4,7 +4,6 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.kicker as Kicker
-import org.kde.taskmanager as TaskManager
 
 Kicker.DashboardWindow {
     id: win
@@ -16,16 +15,10 @@ Kicker.DashboardWindow {
     property alias searchField: search
     property alias drawerFlick: drawerScroll
     property bool settingsOpen: false
-    // With the taskbar kept visible the launcher shares the screen with it. Opening an app, switching to another
-    // app's window or changing desktop (all done from the taskbar) then closes it. Small plasmoid popups
-    // (clock, volume, tray...) are not tasks, so they leave it open.
-    property bool watching: false
-    property int taskBase: 0
-    onVisibilityChanged: function(visibility) { if (visible && visibility === Window.Windowed) armWatch.restart(); else { armWatch.stop(); watching = false; } }
     readonly property int settingsW: 400
 
     backgroundColor: "black"
-    visualParent: launcher
+    visualParent: launcher.primaryItem // Plasma moves and sizes the window to this item's screen: the primary one
     keyEventProxy: search
     onKeyEscapePressed: { if (search.text) search.clear(); else if (settingsOpen) settingsOpen = false; else win.visible = false; }
 
@@ -363,15 +356,6 @@ Kicker.DashboardWindow {
         Connections { target: alphaView; function onColsChanged() { groupTimer.restart(); } }
         Connections { target: appsGrid; function onCellWidthChanged() { groupTimer.restart(); } }
         Connections { target: win.favModel; function onCountChanged() { groupTimer.restart(); } }
-        TaskManager.TasksModel { id: tasks; groupMode: TaskManager.TasksModel.GroupDisabled; separateLaunchers: false }
-        TaskManager.VirtualDesktopInfo { id: vdi }
-        Timer { id: armWatch; interval: 700; onTriggered: { win.taskBase = tasks.count; win.watching = true; } }  // ignore the activation churn of opening
-        Connections { target: vdi; enabled: win.watching; function onCurrentDesktopChanged() { win.visible = false; } }
-        Connections {
-            target: tasks; enabled: win.watching
-            function onCountChanged() { if (tasks.count > win.taskBase) win.visible = false; else win.taskBase = tasks.count; }
-            function onActiveTaskChanged() { if (tasks.activeTask.valid) win.visible = false; }
-        }
         Timer { id: groupTimer; interval: 50; onTriggered: win.rebuildGroups() }
         Timer { id: rebuildTimer; interval: 30; onTriggered: win.rebuild() }
         Timer { id: tipTimer; interval: 700; onTriggered: { if (win.tipTarget) { tip.parent = win.tipTarget; tip.text = win.tipText; tip.open(); } } }
@@ -936,7 +920,6 @@ Kicker.DashboardWindow {
                         Presets { label: i18n("When it opens, show"); names: [i18n("All apps"), i18n("Recent"), i18n("Most used"), i18n("Last used")]; current: win.cfg.startCategory; onPicked: i => win.cfg.startCategory = i }
                         Check { text: i18n("Search documents, files, settings and the calculator too (off = apps only)"); checked: win.cfg.searchDocuments; onToggled: win.cfg.searchDocuments = checked }
                         Check { text: i18n("Clear the search box when it opens"); checked: win.cfg.clearSearch; onToggled: win.cfg.clearSearch = checked }
-                        Check { text: i18n("Keep the taskbar visible while open (applies next time you open it)"); checked: win.cfg.keepTaskbar; onToggled: win.cfg.keepTaskbar = checked }
                         Check { text: i18n("Close after launching an app"); checked: win.cfg.closeOnLaunch; onToggled: win.cfg.closeOnLaunch = checked }
                         Check { text: i18n("Close when clicking empty space"); checked: win.cfg.closeOnClickOutside; onToggled: win.cfg.closeOnClickOutside = checked }
                         Check { text: i18n("Show favorites panel"); checked: win.cfg.showFavorites; onToggled: win.cfg.showFavorites = checked }

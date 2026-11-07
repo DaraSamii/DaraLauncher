@@ -30,7 +30,7 @@ favorites as you like** in a scrollable column, **every app grouped under big le
 - [Install](#install)
 - [Using it](#using-it)
 - [Settings](#settings)
-- [Keep the taskbar visible](#keep-the-taskbar-visible)
+- [Multiple monitors](#multiple-monitors)
 - [How it works](#how-it-works)
 - [Testing](#testing)
 - [Repository layout](#repository-layout)
@@ -57,7 +57,7 @@ favorites as you like** in a scrollable column, **every app grouped under big le
 **Behavior**
 - **Choose what it opens on**: All apps, Recent, Most used, or whatever you used last.
 - **Click far away to close.** Clicks near an app or button are treated as slips and ignored; only a click really far from everything closes it.
-- **Keep the taskbar visible** if you like (see [below](#keep-the-taskbar-visible)).
+- **Always on your primary screen**, full screen, whichever monitor has focus (see [below](#multiple-monitors)).
 - Full keyboard use: `↓` into the results, arrows to move, `Enter` to launch, `Esc` to clear, then close.
 
 **Performance**
@@ -118,21 +118,17 @@ Open the **gear** at the bottom left: a drawer slides in from the right while th
 | **Sizes** | Icon size and text size: Tiny · Small · Normal · Big · Huge |
 | **Favorites** | Icons per row (1–6) |
 | **All apps** | Fit icons per row automatically, or fix the number (1–14) |
-| **Behavior** | What to show on open (All apps / Recent / Most used / Last used) · **search scope: apps only, or documents, files, settings and the calculator too** · clear search on open · close after launching · close when clicking far away · keep the taskbar visible · show favorites · show category list · show A–Z rail · show power buttons |
+| **Behavior** | What to show on open (All apps / Recent / Most used / Last used) · **search scope: apps only, or documents, files, settings and the calculator too** · clear search on open · close after launching · close when clicking far away · show favorites · show category list · show A–Z rail · show power buttons |
 | **Look** | Wallpaper dim and blur · card tint · corner radius · power button size |
 | **Configure dialog only** | Panel icon · wallpaper source (current / custom image / none) · font family · accent color · animations · tile spacing · launcher width · show *Recent* / *Most used* categories |
 
 Settings are stored per widget, so two launchers on two panels can look different.
 
-## Keep the taskbar visible
+## Multiple monitors
 
-By default the launcher covers the whole screen, taskbar included. Turn on **Keep the taskbar visible** (drawer → Behavior) and it sizes itself to the screen *minus your panel*, whichever edge the panel is on, so the taskbar stays visible and clickable:
+The launcher always opens **full screen on your primary monitor** (System Settings → Display & Monitor → *Primary*), whether you press Meta, use the widget's shortcut or click the panel button, and whichever monitor has focus. It is sized to that monitor before it is shown, so it never appears at another monitor's size.
 
-<div align="center">
-  <img src="docs/taskbar-visible.png" alt="Launcher open beside the taskbar" width="800">
-</div>
-
-In this mode the launcher closes by itself when you **open an app, switch to another app's window, or change desktop** from the taskbar. Small plasmoid popups (clock, volume, tray, …) are not windows of apps, so they leave it open. The window is sized *before* it is shown, so the panel is never covered, not even for a frame.
+It covers the taskbar too. On Wayland only a full-screen window can choose its monitor (the compositor places normal windows), so a "keep the taskbar visible" mode cannot be kept on the primary screen and was removed.
 
 ## How it works
 
@@ -159,7 +155,7 @@ It copies the package to a **sandbox plugin id** (your real widget and settings 
 - search (typing, ranking, the clear button, `Enter`), keyboard navigation, tile launching, the context menu (add/remove favorite), the five power buttons;
 - click-away behavior: near misses stay open, far clicks close, the option can disable it;
 - **launcher integration**: declared as an application launcher (the Meta-key target) and no full-representation popup in a panel (static checks);
-- the taskbar mode: desktop change and new app close it, a popup window does not;
+- it opens full screen and covers the whole primary screen;
 - scrolling (exact wheel distances, the A–Z rail), layout alignment invariants (power buttons identical and flush with the cards, gear aligned, columns in order), configuration schema consistency and that every config page compiles;
 - **app names are whole**: every icon size × text size, in sections and grid views, scrolled through every row;
 - **laptop screens**: at 1536 × 864 the apps area keeps at least two columns at every icon size, with and without the settings drawer;
@@ -193,7 +189,7 @@ No network access, no telemetry. The launcher reads only your Plasma configurati
 
 - **Plasma only, and tied to its private API.** It builds on `org.kde.plasma.private.kicker`, which KDE may change between releases.
 - Developed and tested on **Plasma 6.7 / Wayland**. X11 and other Plasma 6 versions are untested.
-- *Keep the taskbar visible* takes away the panel the widget lives on; other panels on the same screen are not subtracted. It was tested with a bottom panel; top, left and right use the same logic but are untested.
+- If you change which monitor is primary while Plasma is running, the launcher keeps opening on the old one until Plasma restarts (`kquitapp6 plasmashell && kstart plasmashell`).
 - Touchpad and touch scrolling follow the standard Qt paths and are not covered by the automated tests (wheel scrolling is).
 - Search results come from your KRunner configuration, so what appears (files, bookmarks, …) follows the runners you have enabled in System Settings.
 

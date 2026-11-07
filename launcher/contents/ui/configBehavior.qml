@@ -11,8 +11,6 @@ KCM.SimpleKCM {
     property bool cfg_searchDocumentsDefault
     property bool cfg_clearSearch
     property bool cfg_clearSearchDefault
-    property bool cfg_keepTaskbar
-    property bool cfg_keepTaskbarDefault
     property bool cfg_closeOnLaunch
     property bool cfg_closeOnLaunchDefault
     property bool cfg_closeOnClickOutside
@@ -40,7 +38,6 @@ KCM.SimpleKCM {
         QQC2.CheckBox { Kirigami.FormData.label: i18n("Search:"); text: i18n("Also search documents, files, settings and the calculator (off = apps only)"); checked: cfg_searchDocuments; onToggled: cfg_searchDocuments = checked }
         QQC2.CheckBox { Kirigami.FormData.label: i18n("Search box:"); text: i18n("Clear it every time"); checked: cfg_clearSearch; onToggled: cfg_clearSearch = checked }
         Kirigami.Separator { Kirigami.FormData.isSection: true; Kirigami.FormData.label: i18n("Window") }
-        QQC2.CheckBox { Kirigami.FormData.label: i18n("Taskbar:"); text: i18n("Keep it visible while the launcher is open (otherwise the launcher covers it)"); checked: cfg_keepTaskbar; onToggled: cfg_keepTaskbar = checked }
         Kirigami.Separator { Kirigami.FormData.isSection: true; Kirigami.FormData.label: i18n("Closing") }
         QQC2.CheckBox { Kirigami.FormData.label: i18n("After launching:"); text: i18n("Close the launcher"); checked: cfg_closeOnLaunch; onToggled: cfg_closeOnLaunch = checked }
         QQC2.CheckBox { Kirigami.FormData.label: i18n("Empty space:"); text: i18n("Close when clicked"); checked: cfg_closeOnClickOutside; onToggled: cfg_closeOnClickOutside = checked }
